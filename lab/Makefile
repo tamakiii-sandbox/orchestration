@@ -14,6 +14,9 @@ plan:
 apply:
 	$(MAKE) terraform/apply ARGS=terraform.tfplan
 
+destroy:
+	$(MAKE) terraform/destroy ARGS="-var-file=${secret_config}"
+
 validate:
 	$(MAKE) terraform/validate
 
