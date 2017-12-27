@@ -8,6 +8,9 @@ secret_config := "config/secret.hcl"
 setup:
 	docker pull ${IMAGE}
 
+init:
+	$(MAKE) terraform/init
+
 plan:
 	$(MAKE) terraform/plan ARGS="-out=terraform.tfplan -var-file=${secret_config}"
 
