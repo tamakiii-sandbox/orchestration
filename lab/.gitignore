@@ -1,2 +1,3 @@
 .terraform
 *.tfplan
+config/secret.hcl
