@@ -32,6 +32,8 @@ variable "subnet_cidr_blocks" {
   }
 }
 
+variable "key_pair" { type = "map" }
+
 ########################################
 # Backend
 ########################################
@@ -130,6 +132,10 @@ resource "aws_route_table_association" "charlie" {
   depends_on = ["aws_subnet.charlie", "aws_route_table.public"]
 }
 
+resource "aws_key_pair" "main" {
+  key_name = "${var.key_pair["key_name"]}"
+  public_key = "${var.key_pair["public_key"]}"
+}
 
 /**
  * try using module
