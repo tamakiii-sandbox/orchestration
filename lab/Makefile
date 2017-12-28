@@ -1,16 +1,27 @@
 IMAGE := hashicorp/terraform:0.11.1
 ARGS  :=
 
-MAKE       := $(shell which make)
+MAKE := $(shell which make)
+
+secret_config := "config/secret.hcl"
 
 setup:
 	docker pull ${IMAGE}
 
+init:
+	$(MAKE) terraform/init
+
 plan:
-	$(MAKE) terraform/plan ARGS=-out=terraform.tfplan
+	$(MAKE) terraform/plan ARGS="-out=terraform.tfplan -var-file=${secret_config}"
 
 apply:
 	$(MAKE) terraform/apply ARGS=terraform.tfplan
+
+destroy:
+	$(MAKE) terraform/destroy ARGS="-var-file=${secret_config}"
+
+validate:
+	$(MAKE) terraform/validate
 
 sh:
 	docker run -it --entrypoint sh ${IMAGE}
