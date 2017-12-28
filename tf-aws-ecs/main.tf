@@ -129,3 +129,13 @@ resource "aws_route_table_association" "charlie" {
 
   depends_on = ["aws_subnet.charlie", "aws_route_table.public"]
 }
+
+
+/**
+ * try using module
+ */
+module "test" {
+  source = "./modules/test"
+  name = "test"
+  cidr_block = "12.0.0.0/16"
+}
