@@ -1,7 +1,9 @@
 IMAGE := hashicorp/terraform:0.11.1
 ARGS  :=
-
 MAKE := $(shell which make)
+
+config_files   ?= $(shell find config -name "*.tfvars" -o -name "*.hcl")
+config_options ?= $(foreach f,${config_files},-var-file="${f}")
 
 setup:
 	docker pull ${IMAGE}
@@ -10,7 +12,7 @@ init:
 	$(MAKE) terraform/init
 
 plan:
-	$(MAKE) terraform/plan ARGS="-out=terraform.tfplan"
+	$(MAKE) terraform/plan ARGS="${config_options} -out=terraform.tfplan"
 
 apply:
 	$(MAKE) terraform/apply ARGS=terraform.tfplan
@@ -20,6 +22,9 @@ destroy:
 
 validate:
 	$(MAKE) terraform/validate
+
+import:
+	$(MAKE) terraform/import ARGS="${NAME} ${VALUE}"
 
 sh:
 	docker run -it --entrypoint sh ${IMAGE}
