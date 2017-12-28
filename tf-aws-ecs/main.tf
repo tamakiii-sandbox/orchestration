@@ -56,3 +56,38 @@ provider "aws" {
 ########################################
 # Resources
 ########################################
+resource "aws_vpc" "main" {
+  cidr_block = "${var.vpc_cidr_block}"
+  instance_tenancy = "default"
+
+  enable_dns_support = true
+  enable_dns_hostnames = true
+  enable_classiclink = false
+
+  tags {
+    Name = "${var.name}"
+  }
+}
+
+resource "aws_subnet" "alpha" {
+  vpc_id = "${aws_vpc.main.id}"
+  availability_zone = "${var.availability_zones["alpha"]}"
+  cidr_block = "${var.subnet_cidr_blocks["alpha"]}"
+
+  tags {
+    Name = "${var.name}-alpha"
+  }
+
+  depends_on = ["aws_vpc.main"]
+}
+resource "aws_subnet" "charlie" {
+  vpc_id = "${aws_vpc.main.id}"
+  availability_zone = "${var.availability_zones["charlie"]}"
+  cidr_block = "${var.subnet_cidr_blocks["charlie"]}"
+
+  tags {
+    Name = "${var.name}-charlie"
+  }
+
+  depends_on = ["aws_vpc.main"]
+}
