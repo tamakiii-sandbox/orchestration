@@ -200,100 +200,116 @@ resource "aws_alb_target_group" "main" {
   }
 }
 
+
 ########################################
 # ECS cluster
 ########################################
-variable "iam_policy_arns" {
-  description = "IAM policy arns for container instance"
-  type        = "list"
-  default     = [
-    # http://docs.aws.amazon.com/AmazonECS/latest/developerguide/instance_IAM_role.html
-    "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role",
-  ]
-}
-
-resource "aws_ecs_cluster" "main" {
-  name = "${var.name}"
-}
 data "template_file" "ecs_user_data" {
   template = "${file("template/ecs_user_data.sh")}"
 
   vars {
-    cluster_name = "${aws_ecs_cluster.main.name}"
+    cluster_name = "${var.name}"
   }
 }
-resource "aws_iam_role" "ecs_instance" {
-  name                  = "${aws_ecs_cluster.main.name}-ecs-instance-role"
-  force_detach_policies = true
-
-  assume_role_policy    = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "",
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "ec2.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-EOF
-}
-resource "aws_iam_role_policy_attachment" "ecs_instance_policy" {
-  role       = "${aws_iam_role.ecs_instance.name}"
-  policy_arn = "${element(var.iam_policy_arns, count.index)}"
-}
-
-resource "aws_iam_instance_profile" "ecs_instance" {
-  name       = "${aws_ecs_cluster.main.name}-ecs-instance-profile"
-  role       = "${aws_iam_role.ecs_instance.name}"
-}
-resource "aws_launch_configuration" "main" {
-  name_prefix = "${var.name}"
-  security_groups = [
-    "${aws_security_group.ecs.id}"
-  ]
-  key_name = "${var.key_pair["key_name"]}"
-  image_id = "ami-af46dbc9"
-  instance_type = "t2.small"
-  ebs_optimized = false
-  iam_instance_profile = "${aws_iam_instance_profile.ecs_instance.name}"
-  user_data = "${data.template_file.ecs_user_data.rendered}"
-  associate_public_ip_address = true
-  enable_monitoring = true
-
-  ebs_block_device {
-    device_name = "/dev/xvdcz"
-    volume_type = "gp2"
-    volume_size = 22
-  }
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-resource "aws_autoscaling_group" "main" {
+module "ecs_cluster" {
+  source = "git@github.com:voyagegroup/tf_aws_ecs?ref=v0.1.2//cluster"
   name = "${var.name}"
-  enabled_metrics = []
 
-  launch_configuration = "${aws_launch_configuration.main.name}"
-  termination_policies = []
+  log_group = "${var.name}/ecs-cluster"
+  log_groups_expiration_days = 14
 
-  min_size = 2
-  max_size = 6
+  # asg_enabled_metrics = [
+  #   "GroupDesiredCapacity",
+  #   "GroupStandbyInstances",
+  # ]
+
+  # launch_configuration  = "" // TODO
+  # asg_termination_policies = [
+  #   # "OldestInstance"
+  # ]
+
+  asg_min_size = 2
+  asg_max_size = 6
 
   vpc_zone_identifier = [
     "${aws_subnet.alpha.id}",
     "${aws_subnet.charlie.id}",
   ]
 
-  default_cooldown = 150
+  asg_default_cooldown = 150
 
-  lifecycle {
-    create_before_destroy = true
-    ignore_changes = ["desired_capacity"]
+  # asg_extra_tags = []
+
+  security_groups = [
+    "${aws_security_group.ecs.id}"
+  ]
+
+  key_name = "${var.key_pair["key_name"]}"
+  # ami_id = "${data.aws_ami.api.id}"
+  ami_id = "ami-56bd0030"
+  instance_type = "t2.small"
+  ebs_optimized = false
+  user_data = "${data.template_file.ecs_user_data.rendered}"
+
+  associate_public_ip_address = true
+}
+
+
+########################################
+# ECS service
+########################################
+resource "aws_cloudwatch_log_group" "container" {
+  name              = "${var.name}/container"
+  retention_in_days = 14
+}
+
+# MEMO: aws_ecs_task_definition 使ったほうがよさそう？
+data "template_file" "ecs_task_definitions" {
+  # http://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html
+  template = "${file("template/ecs_task_definitions.tpl.json")}"
+
+  vars {
+    container = "${var.name}"
+    region = "${var.region}"
+    image = "825814182855.dkr.ecr.ap-northeast-1.amazonaws.com/firstrun:latest"
+    memory = "512"
   }
+}
+
+module "ecs_service" {
+  source = "git@github.com:voyagegroup/tf_aws_ecs?ref=v0.1.2//service_load_balancing"
+  name = "${var.name}"
+  container_family = "${var.name}"
+  container_name = "${var.name}"
+  container_port = "80"
+  container_definitions = "${data.template_file.ecs_task_definitions.rendered}"
+  cluster_id = "${module.ecs_cluster.cluster_id}"
+
+  desired_count = 2
+  deployment_maximum_percent = 200
+  deployment_minimum_healthy_percent = 100
+
+  target_group_arn = "${aws_alb_target_group.main.arn}"
+
+  autoscale_thresholds = {
+    cpu_reservation_high = 75
+    cpu_reservation_low = 10
+    memory_high = 80
+    memory_low = 40
+  }
+
+  # iam_path = ?
+
+  cluster_name = "${var.name}"
+
+  scale_out_step_adjustment = {
+    metric_interval_lower_bound = 0
+    scaling_adjustment = 1
+  }
+  scale_in_step_adjustment = {
+    metric_interval_upper_bound = 0
+    scaling_adjustment = -1
+  }
+
+  # scale_out_more_alarm_actions = ["${aws_sns_topic.alert.arn}"]
 }
