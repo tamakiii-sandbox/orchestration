@@ -119,6 +119,11 @@ resource "aws_route_table" "public" {
   depends_on = ["aws_internet_gateway.public"]
 }
 
+resource "aws_main_route_table_association" "public" {
+  vpc_id         = "${aws_vpc.main.id}"
+  route_table_id = "${aws_route_table.public.id}"
+}
+
 resource "aws_route_table_association" "alpha" {
   subnet_id = "${aws_subnet.alpha.id}"
   route_table_id = "${aws_route_table.public.id}"
@@ -206,7 +211,7 @@ resource "aws_default_security_group" "default" {
 }
 
 data "template_file" "ecs_user_data" {
-  template = "${file("template/ecs_user_data.tpl.yaml")}"
+  template = "${file("template/ecs_user_data.sh")}"
 
   vars {
     aws_region         = "${var.region}"
@@ -260,7 +265,7 @@ module "ecs_cluster" {
   ebs_optimized = false
   user_data = "${data.template_file.ecs_user_data.rendered}"
 
-  associate_public_ip_address = false
+  associate_public_ip_address = true
 }
 
 
