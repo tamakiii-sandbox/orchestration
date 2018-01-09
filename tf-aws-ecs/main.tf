@@ -313,3 +313,27 @@ module "ecs_service" {
 
   # scale_out_more_alarm_actions = ["${aws_sns_topic.alert.arn}"]
 }
+
+########################################
+# Elasticache
+########################################
+resource "aws_elasticache_subnet_group" "memcache" {
+  name = "${var.name}"
+  subnet_ids = [
+    "${aws_subnet.alpha.id}",
+    "${aws_subnet.charlie.id}"
+  ]
+}
+resource "aws_elasticache_cluster" "memcache" {
+  cluster_id = "${var.name}"
+  engine = "memcached"
+  node_type = "cache.t2.small"
+  port = 11211
+  num_cache_nodes = 2
+  parameter_group_name = "default.memcached1.4"
+  subnet_group_name = "${aws_elasticache_subnet_group.memcache.name}"
+  availability_zones = [
+    "${var.availability_zones["alpha"]}",
+    "${var.availability_zones["charlie"]}"
+  ]
+}
