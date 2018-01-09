@@ -150,6 +150,7 @@ resource "aws_security_group" "ecs" {
     protocol = "tcp"
     from_port = "80"
     to_port = "80"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags {
@@ -270,7 +271,8 @@ data "template_file" "ecs_task_definitions" {
   vars {
     container = "${var.name}"
     region = "${var.region}"
-    image = "825814182855.dkr.ecr.ap-northeast-1.amazonaws.com/tryecscli/httpd"
+    # image = "825814182855.dkr.ecr.ap-northeast-1.amazonaws.com/tryecscli/httpd"
+    image = "825814182855.dkr.ecr.ap-northeast-1.amazonaws.com/firstrun:latest"
     memory = "512"
   }
 }
@@ -326,6 +328,7 @@ resource "aws_security_group" "alb" {
     protocol    = "tcp"
     from_port   = 80
     to_port     = 80
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
