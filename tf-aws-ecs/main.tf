@@ -240,8 +240,8 @@ module "ecs_cluster" {
   asg_max_size = 6
 
   vpc_zone_identifier = [
-    "${var.availability_zones["alpha"]}",
-    "${var.availability_zones["charlie"]}",
+    "${aws_subnet.alpha.id}",
+    "${aws_subnet.charlie.id}",
   ]
 
   asg_default_cooldown = 150
