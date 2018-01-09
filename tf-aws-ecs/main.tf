@@ -25,10 +25,10 @@ variable "vpc_cidr_block" {
 variable "subnet_cidr_blocks" {
   type = "map"
   default = {
-    alpha    = "11.0.1.0/24"
-    beta     = "11.0.2.0/24"
-    charlie  = "11.0.3.0/24"
-    delta    = "11.0.4.0/24"
+    alpha    = "11.0.0.0/24"
+    beta     = "11.0.1.0/24"
+    charlie  = "11.0.2.0/24"
+    delta    = "11.0.3.0/24"
   }
 }
 
@@ -52,4 +52,77 @@ provider "aws" {
   version = "~> 1.6"
   profile = "${var.profile}"
   region = "${var.region}"
+}
+
+########################################
+# VPC
+########################################
+resource "aws_vpc" "main" {
+  cidr_block = "${var.vpc_cidr_block}"
+  instance_tenancy = "default"
+
+  enable_dns_support = true
+  enable_dns_hostnames = true
+  enable_classiclink = false
+
+  tags {
+    Name = "${var.name}"
+  }
+}
+
+########################################
+# Subnets
+########################################
+resource "aws_subnet" "alpha" {
+  vpc_id = "${aws_vpc.main.id}"
+  availability_zone = "${var.availability_zones["alpha"]}"
+  cidr_block = "${var.subnet_cidr_blocks["alpha"]}"
+
+  tags {
+    Name = "${var.name}-alpha"
+  }
+}
+resource "aws_subnet" "charlie" {
+  vpc_id = "${aws_vpc.main.id}"
+  availability_zone = "${var.availability_zones["charlie"]}"
+  cidr_block = "${var.subnet_cidr_blocks["charlie"]}"
+
+  tags {
+    Name = "${var.name}-charlie"
+  }
+}
+
+########################################
+# Route table
+########################################
+resource "aws_route_table" "public" {
+  vpc_id = "${aws_vpc.main.id}"
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = "${aws_internet_gateway.public.id}"
+  }
+
+  tags {
+    Name = "${var.name}"
+  }
+}
+resource "aws_route_table_association" "alpha" {
+  subnet_id = "${aws_subnet.alpha.id}"
+  route_table_id = "${aws_route_table.public.id}"
+}
+resource "aws_route_table_association" "charlie" {
+  subnet_id = "${aws_subnet.charlie.id}"
+  route_table_id = "${aws_route_table.public.id}"
+}
+
+########################################
+# Internet gateway
+########################################
+resource "aws_internet_gateway" "public" {
+  vpc_id = "${aws_vpc.main.id}"
+
+  tags {
+    Name = "${var.name}"
+  }
 }
