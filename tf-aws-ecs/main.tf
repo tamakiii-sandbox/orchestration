@@ -262,6 +262,129 @@ module "ecs_cluster" {
   associate_public_ip_address = false
 }
 
+
+data "template_file" "ecs_task_definitions" {
+  # http://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html
+  template = "${file("template/ecs_task_definitions.tpl.json")}"
+
+  vars {
+    container = "api"
+    region = "${var.region}"
+    image = "825814182855.dkr.ecr.ap-northeast-1.amazonaws.com/tryecscli/httpd"
+    memory = "512"
+  }
+}
+
+
+resource "aws_alb" "main" {
+  name = "${var.name}"
+  internal = false
+  security_groups = [
+    "${aws_security_group.ecs.id}"
+  ]
+  subnets = [
+    "${aws_subnet.alpha.id}",
+    "${aws_subnet.charlie.id}",
+  ]
+
+  enable_deletion_protection = false
+}
+resource "aws_alb_target_group" "main" {
+  name = "api"
+  port = 80
+  protocol = "HTTP"
+  vpc_id = "${aws_vpc.main.id}"
+
+  health_check {
+    path = "/healthcheck"
+    interval = 10
+    healthy_threshold = 2
+    unhealthy_threshold = 2
+  }
+
+  tags {
+    Application = "api"
+  }
+}
+resource "aws_alb_listener" "http" {
+  load_balancer_arn = "${aws_alb.main.arn}"
+  port              = 80
+  protocol          = "HTTP"
+
+  "default_action" {
+    target_group_arn = "${aws_alb_target_group.main.arn}"
+    type             = "forward"
+  }
+}
+
+resource "aws_security_group" "alb" {
+  name        = "${var.name}"
+  description = "alb security_group"
+  vpc_id      = "${aws_vpc.main.id}"
+
+  # ingress {
+  #   protocol    = "tcp"
+  #   from_port   = 443
+  #   to_port     = 443
+  #   cidr_blocks = [
+  #     # Monitoring
+  #     "${var.CIDR_NEWRELIC_SYNTHETICS}",
+  #     # Office
+  #     "${var.CIDR_OFFICE_SJDC}",
+  #     "${var.CIDR_OFFICE_1STPLACE_FAILOVER}",
+  #     "${var.CIDR_OFFICE_SQ_FAILOVER}",
+  #     # DC
+  #     "${var.CIDR_DR_FDC_DSR}",
+  #     "${var.CIDR_DR_FDC_MANAGE}",
+  #   ]
+  # }
+
+  egress {
+    protocol    = "-1"
+    from_port   = 0
+    to_port     = 0
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags {
+    Name = "${var.name}"
+  }
+}
+
+module "ecs_service" {
+  source = "git@github.com:voyagegroup/tf_aws_ecs?ref=v0.1.2//service_load_balancing"
+  name = "${var.name}"
+  container_family = "${var.name}"
+  container_name = "${var.name}"
+  container_port = "80"
+  container_definitions = "${data.template_file.ecs_task_definitions.rendered}"
+  cluster_id = "${module.ecs_cluster.cluster_id}"
+
+  target_group_arn = "${aws_alb_target_group.main.arn}"
+
+  autoscale_thresholds = {
+    cpu_reservation_high = 75
+    cpu_reservation_low = 10
+    memory_high = 80
+    memory_low = 40
+  }
+
+  # iam_path = ?
+
+  cluster_name = "${var.name}"
+
+  scale_out_step_adjustment = {
+    metric_interval_lower_bound = 0
+    scaling_adjustment = 1
+  }
+  scale_in_step_adjustment = {
+    metric_interval_upper_bound = 0
+    scaling_adjustment = -1
+  }
+
+  # scale_out_more_alarm_actions = ["${aws_sns_topic.alert.arn}"]
+}
+
 # output "ecs_cluster" {
 #   value = <<EOF
 #   name: ${module.ecs_cluster.cluster_name}
