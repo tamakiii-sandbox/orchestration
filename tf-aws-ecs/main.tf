@@ -268,7 +268,7 @@ data "template_file" "ecs_task_definitions" {
   template = "${file("template/ecs_task_definitions.tpl.json")}"
 
   vars {
-    container = "api"
+    container = "${var.name}"
     region = "${var.region}"
     image = "825814182855.dkr.ecr.ap-northeast-1.amazonaws.com/tryecscli/httpd"
     memory = "512"
@@ -290,7 +290,7 @@ resource "aws_alb" "main" {
   enable_deletion_protection = false
 }
 resource "aws_alb_target_group" "main" {
-  name = "api"
+  name = "${var.name}"
   port = 80
   protocol = "HTTP"
   vpc_id = "${aws_vpc.main.id}"
@@ -303,7 +303,7 @@ resource "aws_alb_target_group" "main" {
   }
 
   tags {
-    Application = "api"
+    Application = "${var.name}"
   }
 }
 resource "aws_alb_listener" "http" {
@@ -322,22 +322,11 @@ resource "aws_security_group" "alb" {
   description = "alb security_group"
   vpc_id      = "${aws_vpc.main.id}"
 
-  # ingress {
-  #   protocol    = "tcp"
-  #   from_port   = 443
-  #   to_port     = 443
-  #   cidr_blocks = [
-  #     # Monitoring
-  #     "${var.CIDR_NEWRELIC_SYNTHETICS}",
-  #     # Office
-  #     "${var.CIDR_OFFICE_SJDC}",
-  #     "${var.CIDR_OFFICE_1STPLACE_FAILOVER}",
-  #     "${var.CIDR_OFFICE_SQ_FAILOVER}",
-  #     # DC
-  #     "${var.CIDR_DR_FDC_DSR}",
-  #     "${var.CIDR_DR_FDC_MANAGE}",
-  #   ]
-  # }
+  ingress {
+    protocol    = "tcp"
+    from_port   = 80
+    to_port     = 80
+  }
 
   egress {
     protocol    = "-1"
