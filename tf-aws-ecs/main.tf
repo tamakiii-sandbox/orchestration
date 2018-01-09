@@ -140,23 +140,23 @@ resource "aws_key_pair" "main" {
 # variable "ecs_ami" {
 #   default = "ami-56bd0030"
 # }
-#
-# resource "aws_security_group" "ecs" {
-#   vpc_id      = "${aws_vpc.main.id}"
-#   name        = "ecs"
-#   description = "ecs security group"
-#
-#   ingress {
-#     protocol = "tcp"
-#     from_port = "80"
-#     to_port = "80"
-#   }
-#
-#   tags {
-#     Name = "ecs"
-#   }
-# }
-#
+
+resource "aws_security_group" "ecs" {
+  vpc_id      = "${aws_vpc.main.id}"
+  name        = "${var.name}-ecs"
+  description = "ecs security group"
+
+  ingress {
+    protocol = "tcp"
+    from_port = "80"
+    to_port = "80"
+  }
+
+  tags {
+    Name = "ecs"
+  }
+}
+
 # resource "aws_security_group" "lb" {
 #   vpc_id      = "${aws_vpc.main.id}"
 #   name        = "lb"
@@ -200,18 +200,68 @@ resource "aws_key_pair" "main" {
 #   owners     = ["self"]
 # }
 
-/**
- * try using module
- */
-module "test" {
-  source = "./modules/test"
-  name = "test"
-  cidr_block = "12.0.0.0/16"
+resource "aws_default_security_group" "default" {
+  vpc_id = "${aws_vpc.main.id}"
+}
+
+data "template_file" "ecs_user_data" {
+  template = "${file("template/ecs_user_data.tpl.yaml")}"
+
+  vars {
+    aws_region         = "${var.region}"
+    ecs_cluster_name   = "${var.name}"
+    ecs_log_level      = "info"
+    ecs_agent_version  = "latest"
+    ecs_log_group_name = "${var.name}/ecs_agent"
+  }
 }
 
 /**
  * try using tf_aws_ecs(cluster)
  */
+module "ecs_cluster" {
+  source = "git@github.com:voyagegroup/tf_aws_ecs?ref=v0.1.2//cluster"
+  name = "${var.name}"
+
+  log_group = "${var.name}/ecs_agent"
+  log_groups_expiration_days = 14
+
+  asg_enabled_metrics = [
+    "GroupDesiredCapacity",
+    "GroupStandbyInstances",
+  ]
+
+  # launch_configuration  = "" // TODO
+  asg_termination_policies = [
+    "OldestInstance"
+  ]
+
+  asg_min_size = 2
+  asg_max_size = 6
+
+  vpc_zone_identifier = [
+    "${var.availability_zones["alpha"]}",
+    "${var.availability_zones["charlie"]}",
+  ]
+
+  asg_default_cooldown = 150
+
+  # asg_extra_tags = []
+
+  security_groups = [
+    "${aws_security_group.ecs.id}"
+  ]
+
+  key_name = "${aws_key_pair.main.key_name}"
+  # ami_id = "${data.aws_ami.api.id}"
+  ami_id = "ami-56bd0030"
+  instance_type = "t2.medium"
+  ebs_optimized = false
+  user_data = "${data.template_file.ecs_user_data.rendered}"
+
+  associate_public_ip_address = false
+}
+
 # output "ecs_cluster" {
 #   value = <<EOF
 #   name: ${module.ecs_cluster.cluster_name}
