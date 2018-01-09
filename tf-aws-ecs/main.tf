@@ -199,3 +199,101 @@ resource "aws_alb_target_group" "main" {
     Application = "${var.name}"
   }
 }
+
+########################################
+# ECS cluster
+########################################
+variable "iam_policy_arns" {
+  description = "IAM policy arns for container instance"
+  type        = "list"
+  default     = [
+    # http://docs.aws.amazon.com/AmazonECS/latest/developerguide/instance_IAM_role.html
+    "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role",
+  ]
+}
+
+resource "aws_ecs_cluster" "main" {
+  name = "${var.name}"
+}
+data "template_file" "ecs_user_data" {
+  template = "${file("template/ecs_user_data.sh")}"
+
+  vars {
+    cluster_name = "${aws_ecs_cluster.main.name}"
+  }
+}
+resource "aws_iam_role" "ecs_instance" {
+  name                  = "${aws_ecs_cluster.main.name}-ecs-instance-role"
+  force_detach_policies = true
+
+  assume_role_policy    = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+resource "aws_iam_role_policy_attachment" "ecs_instance_policy" {
+  role       = "${aws_iam_role.ecs_instance.name}"
+  policy_arn = "${element(var.iam_policy_arns, count.index)}"
+}
+
+resource "aws_iam_instance_profile" "ecs_instance" {
+  name       = "${aws_ecs_cluster.main.name}-ecs-instance-profile"
+  role       = "${aws_iam_role.ecs_instance.name}"
+}
+resource "aws_launch_configuration" "main" {
+  name_prefix = "${var.name}"
+  security_groups = [
+    "${aws_security_group.ecs.id}"
+  ]
+  key_name = "${var.key_pair["key_name"]}"
+  image_id = "ami-af46dbc9"
+  instance_type = "t2.small"
+  ebs_optimized = false
+  iam_instance_profile = "${aws_iam_instance_profile.ecs_instance.name}"
+  user_data = "${data.template_file.ecs_user_data.rendered}"
+  associate_public_ip_address = true
+  enable_monitoring = true
+
+  ebs_block_device {
+    device_name = "/dev/xvdcz"
+    volume_type = "gp2"
+    volume_size = 22
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+resource "aws_autoscaling_group" "main" {
+  name = "${var.name}"
+  enabled_metrics = []
+
+  launch_configuration = "${aws_launch_configuration.main.name}"
+  termination_policies = []
+
+  min_size = 2
+  max_size = 6
+
+  vpc_zone_identifier = [
+    "${aws_subnet.alpha.id}",
+    "${aws_subnet.charlie.id}",
+  ]
+
+  default_cooldown = 150
+
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes = ["desired_capacity"]
+  }
+}
