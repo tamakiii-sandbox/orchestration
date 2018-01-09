@@ -153,3 +153,49 @@ resource "aws_security_group" "ecs" {
     Name = "${var.name}-ecs"
   }
 }
+
+########################################
+# Application load balancer
+########################################
+resource "aws_alb" "main" {
+  name = "${var.name}"
+  internal = false
+
+  security_groups = [
+    "${aws_security_group.ecs.id}"
+  ]
+
+  subnets = [
+    "${aws_subnet.alpha.id}",
+    "${aws_subnet.charlie.id}",
+  ]
+
+  enable_deletion_protection = false
+}
+resource "aws_alb_listener" "http" {
+  load_balancer_arn = "${aws_alb.main.arn}"
+  port = 80
+  protocol = "HTTP"
+
+  default_action {
+    target_group_arn = "${aws_alb_target_group.main.arn}"
+    type = "forward"
+  }
+}
+resource "aws_alb_target_group" "main" {
+  name = "${var.name}"
+  port = 80
+  protocol = "HTTP"
+  vpc_id = "${aws_vpc.main.id}"
+
+  health_check {
+    path = "/"
+    interval = 30
+    healthy_threshold = 5
+    unhealthy_threshold = 2
+  }
+
+  tags {
+    Application = "${var.name}"
+  }
+}
