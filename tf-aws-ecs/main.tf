@@ -209,7 +209,7 @@ resource "aws_alb" "main" {
 
   security_groups = [
     "${aws_default_security_group.default.id}",
-    "${aws_security_group.ecs.id}",
+    "${aws_security_group.alb.id}",
   ]
 
   subnets = [
