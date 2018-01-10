@@ -130,6 +130,29 @@ resource "aws_internet_gateway" "public" {
 ########################################
 # Security group
 ########################################
+resource "aws_default_security_group" "default" {
+  vpc_id = "${aws_vpc.main.id}"
+
+  ingress {
+    protocol    = "tcp"
+    from_port   = 22
+    to_port     = 22
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    protocol = "-1"
+    from_port = "0"
+    to_port = "0"
+    cidr_blocks = [
+      "0.0.0.0/0"
+    ]
+  }
+
+  tags {
+    Name = "${var.name}"
+  }
+}
 resource "aws_security_group" "ecs" {
   vpc_id      = "${aws_vpc.main.id}"
   name        = "${var.name}-ecs"
@@ -139,13 +162,6 @@ resource "aws_security_group" "ecs" {
     protocol = "tcp"
     from_port = "80"
     to_port = "80"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    protocol = "tcp"
-    from_port = 22
-    to_port = 22
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -169,7 +185,8 @@ resource "aws_alb" "main" {
   internal = false
 
   security_groups = [
-    "${aws_security_group.ecs.id}"
+    "${aws_default_security_group.default.id}",
+    "${aws_security_group.ecs.id}",
   ]
 
   subnets = [
@@ -248,7 +265,8 @@ module "ecs_cluster" {
   # asg_extra_tags = []
 
   security_groups = [
-    "${aws_security_group.ecs.id}"
+    "${aws_default_security_group.default.id}",
+    "${aws_security_group.ecs.id}",
   ]
 
   key_name = "${var.key_pair["key_name"]}"
