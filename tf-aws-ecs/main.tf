@@ -160,8 +160,8 @@ resource "aws_security_group" "ecs" {
 
   ingress {
     protocol = "tcp"
-    from_port = "80"
-    to_port = "80"
+    from_port = 80
+    to_port = 80
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -174,6 +174,29 @@ resource "aws_security_group" "ecs" {
 
   tags {
     Name = "${var.name}-ecs"
+  }
+}
+resource "aws_security_group" "alb" {
+  vpc_id = "${aws_vpc.main.id}"
+  name = "${var.name}-alb"
+  description = "ALB security group"
+
+  ingress {
+    protocol = "tcp"
+    from_port = 80
+    to_port = 80
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    protocol = -1
+    from_port = 0
+    to_port = 0
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags {
+    Name = "${var.name}-alb"
   }
 }
 
