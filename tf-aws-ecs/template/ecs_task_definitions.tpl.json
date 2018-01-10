@@ -6,7 +6,7 @@
     "memory":    ${memory},
     "portMappings": [
       {
-        "hostPort": 80,
+        "hostPort": 0,
         "containerPort": 80
       }
     ],
