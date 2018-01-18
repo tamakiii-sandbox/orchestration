@@ -15,7 +15,7 @@ resource "aws_vpc" "main" {
 }
 
 #--------------------------------------------------------------
-# Security Group
+# Security Group - default
 #--------------------------------------------------------------
 resource "aws_default_security_group" "default" {
   vpc_id = "${aws_vpc.main.id}"
@@ -103,4 +103,67 @@ resource "aws_route_table_association" "public_c" {
 resource "aws_key_pair" "developer" {
   key_name   = "symfony-4.0-developer.pem"
   public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC4XkmsvrZ/8UUXFyqB6JcClRLVXa0bgfPScj4ueMgFvNrVmUJyZsIUnoBAg+8o8ZU/MsWNH/M94TY/3ryFFEmuSC8FQjGVuGAhivil/9IBaPauV7ihNAQcGy6dSe5LmEP+qjMaGJavds93pJXcANmvhodvFSgXfvga80RdJ4pMjX7bPCYnzjCCwA1Eht4e2Y6hKCPrX2Khq6pHPEc3bjRQ8Ut8MBnHzPzq/iPH6rT8+HhfJN81fuwXqWqzarY9+4u1zN+P3akIXPNJ3yoir6aKWFOHlOdGBhRIlVThjiExRsrdhM+wEqLAlz3R67whkQtK/PsNrZrm2WE0pmvVxB6awo6LZqX2afxfRoSMw3Ay+tIIwRlAEDrGhQ3GsW0xfNMwe0jbOrHWfzFqas35QEH8+0s9xzffnarLq6VOU7J8FQ+SfPjFmFRHGmy3M0whGPLAk9zjpq7rzAqo7YfjzSe89UGrAIvRYV3Qwa/BPnKXdDKoWjGAP3KUvEfLeCFauv/O7ka+3j9yNxuKmUZp0sVNuIyJ2ds5SkIYpvf32vvmDHY9tDQiCQCYn3xeleImEQF3vfsQ2h6r9Knliag6GNhMEnoBEpzMD12ZfW34Hqn9e9ASJU43hYfjuG+l24xtIccQWMv3gUJSjG9txXb3SETBd+e4yOCKYZFXtWX0LCQYaw== tamakiii"
+}
+
+#--------------------------------------------------------------
+# Security Group - ALB
+#--------------------------------------------------------------
+resource "aws_security_group" "alb" {
+  name        = "ALB security group"
+  description = "Allow request from internet"
+  vpc_id      = "${aws_vpc.main.id}"
+
+  tags {
+    Name = "${var.name}-alb"
+  }
+}
+resource "aws_security_group_rule" "alb_ingress_http" {
+  type            = "ingress"
+  from_port       = 80
+  to_port         = 80
+  protocol        = "tcp"
+  cidr_blocks     = ["0.0.0.0/0"]
+
+  security_group_id = "${aws_security_group.alb.id}"
+}
+resource "aws_security_group_rule" "alb_egress_all_traffic" {
+  type            = "egress"
+  from_port       = 0
+  to_port         = 0
+  protocol        = "-1"
+  cidr_blocks     = ["0.0.0.0/0"]
+
+  security_group_id = "${aws_security_group.alb.id}"
+}
+
+
+#--------------------------------------------------------------
+# Security Group - ECS
+#--------------------------------------------------------------
+resource "aws_security_group" "ecs" {
+  name        = "ECS security group"
+  description = "Allow ECS ports"
+  vpc_id      = "${aws_vpc.main.id}"
+
+  tags {
+    Name = "${var.name}-ecs"
+  }
+}
+resource "aws_security_group_rule" "ecs_egress_all_traffic" {
+  type            = "egress"
+  from_port       = 0
+  to_port         = 0
+  protocol        = "-1"
+  cidr_blocks     = ["0.0.0.0/0"]
+
+  security_group_id = "${aws_security_group.ecs.id}"
+}
+resource "aws_security_group_rule" "ecs_ingress_dynamic_ports" {
+  type            = "ingress"
+  from_port       = 0
+  to_port         = 65535
+  protocol        = "tcp"
+
+  security_group_id = "${aws_security_group.ecs.id}"
+  source_security_group_id = "${aws_security_group.alb.id}"
 }
