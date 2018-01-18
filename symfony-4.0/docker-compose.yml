@@ -1,0 +1,23 @@
+version: '3.4'
+services:
+  repository:
+    image: symfony-4.0/app
+    build: ./docker/app
+    tty: true
+    volumes:
+      - type: bind
+        source: ./repository
+        target: /repository
+
+  php:
+    image: symfony-4.0/php
+    build: ./docker/php
+    expose:
+      - 9000
+
+  httpd:
+    image: symfony-4.0/httpd
+    build: ./docker/httpd
+    ports:
+      - 8080:80
+
