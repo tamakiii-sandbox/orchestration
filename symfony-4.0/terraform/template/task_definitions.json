@@ -1,0 +1,37 @@
+[
+  {
+    "name":      "app",
+    "essential": true,
+    "image":     "825814182855.dkr.ecr.ap-northeast-1.amazonaws.com/symfony-4.0/app:latest",
+    "memory":    128,
+    "portMappings": [],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group":  "symfony-40/container/app",
+        "awslogs-region": "${region}",
+        "awslogs-multiline-pattern": "{datetime_format}"
+      }
+    }
+  },
+  {
+    "name":      "httpd",
+    "essential": true,
+    "image":     "825814182855.dkr.ecr.ap-northeast-1.amazonaws.com/symfony-4.0/httpd:latest",
+    "memory":    128,
+    "portMappings": [
+      {
+        "hostPort": 0,
+        "containerPort": 80
+      }
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group":  "symfony-40/container/httpd",
+        "awslogs-region": "${region}",
+        "awslogs-multiline-pattern": "{datetime_format}"
+      }
+    }
+  }
+]

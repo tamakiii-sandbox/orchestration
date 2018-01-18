@@ -437,3 +437,105 @@ resource "aws_cloudwatch_metric_alarm" "cpu_reservation_low" {
     "${aws_autoscaling_policy.scale_in.arn}",
   ]
 }
+
+#--------------------------------------------------------------
+# Auto Scaling - Cluster
+#--------------------------------------------------------------
+data "template_file" "ecs_service_task_definitions" {
+  # http://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html
+  template = "${file("template/task_definitions.json")}"
+
+  vars {
+    region = "${var.AWS_REGION}"
+  }
+}
+
+resource "aws_ecs_task_definition" "container" {
+  family                = "${var.name}"
+  container_definitions = "${data.template_file.ecs_service_task_definitions.rendered}"
+}
+
+resource "aws_ecs_service" "main" {
+  name                               = "${var.name}-${var.name}"
+  cluster                            = "${aws_ecs_cluster.main.id}"
+  task_definition                    = "${aws_ecs_task_definition.container.arn}"
+  desired_count                      = 2
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 100
+  iam_role                           = "${aws_iam_role.ecs_service.arn}"
+
+  placement_strategy {
+    type  = "spread"
+    field = "instanceId"
+  }
+
+  load_balancer {
+    target_group_arn = "${aws_alb_target_group.ecs.arn}"
+    container_name = "httpd"
+    container_port = 80
+  }
+
+  # placement_constraints {
+  #   type       = "memberOf"
+  #   expression = "attribute:ecs.availability-zone in [us-west-2a, us-west-2b]"
+  # }
+
+  lifecycle {
+    # INFO: In the future, we support that U can customize
+    #       https://github.com/hashicorp/terraform/issues/3116
+    ignore_changes = [
+      "desired_count",
+      "task_definition",
+    ]
+  }
+}
+
+resource "aws_iam_role" "ecs_service" {
+  name                  = "${var.name}-ecs-service-role"
+  path                  = "/"
+  force_detach_policies = true
+  assume_role_policy    = <<EOT
+{
+  "Version": "2008-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ecs.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOT
+}
+
+resource "aws_iam_role_policy" "ecs_service" {
+  name   = "${var.name}-ecs-service-policy"
+  role   = "${aws_iam_role.ecs_service.name}"
+  policy = <<EOT
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:Describe*",
+        "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
+        "elasticloadbalancing:DeregisterTargets",
+        "elasticloadbalancing:Describe*",
+        "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
+        "elasticloadbalancing:RegisterTargets"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOT
+}
+
+resource "aws_cloudwatch_log_group" "httpd" {
+  name              = "symfony-40/container/httpd"
+  retention_in_days = 14
+}
