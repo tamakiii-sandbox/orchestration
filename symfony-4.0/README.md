@@ -2,3 +2,6 @@
 
 ## Dependencies
 - make
+- docker
+- docker-compose
+- terraform
