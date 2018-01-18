@@ -1,4 +1,4 @@
-IMAGE := hashicorp/terraform:0.11.1
+IMAGE := hashicorp/terraform:0.11.2
 ARGS  :=
 MAKE := $(shell which make)
 
@@ -18,7 +18,7 @@ apply:
 	$(MAKE) terraform/apply ARGS=terraform.tfplan
 
 destroy:
-	$(MAKE) terraform/destroy
+	$(MAKE) terraform/destroy ARGS="${config_options}"
 
 validate:
 	$(MAKE) terraform/validate
