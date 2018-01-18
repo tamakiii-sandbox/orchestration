@@ -136,7 +136,6 @@ resource "aws_security_group_rule" "alb_egress_all_traffic" {
   security_group_id = "${aws_security_group.alb.id}"
 }
 
-
 #--------------------------------------------------------------
 # Security Group - ECS
 #--------------------------------------------------------------
@@ -166,4 +165,275 @@ resource "aws_security_group_rule" "ecs_ingress_dynamic_ports" {
 
   security_group_id = "${aws_security_group.ecs.id}"
   source_security_group_id = "${aws_security_group.alb.id}"
+}
+
+#--------------------------------------------------------------
+# ALB for ECS
+#--------------------------------------------------------------
+resource "aws_alb" "ecs" {
+  name            = "${var.name}-ecs"
+  security_groups = [
+    "${aws_default_security_group.default.id}",
+    "${aws_security_group.alb.id}",
+  ]
+  subnets         = [
+    "${aws_subnet.public_a.id}",
+    "${aws_subnet.public_c.id}"
+  ]
+
+  enable_deletion_protection = false
+
+  tags {
+    Name = "${var.name}-ecs"
+  }
+}
+resource "aws_alb_target_group" "ecs" {
+  name     = "${var.name}-ecs"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = "${aws_vpc.main.id}"
+
+  tags {
+    Application = "${var.name}-ecs"
+  }
+}
+resource "aws_alb_listener" "ecs_http" {
+  load_balancer_arn = "${aws_alb.ecs.arn}"
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    target_group_arn = "${aws_alb_target_group.ecs.arn}"
+    type             = "forward"
+  }
+}
+
+#--------------------------------------------------------------
+# ECS Cluster
+#--------------------------------------------------------------
+resource "aws_ecs_cluster" "main" {
+  name = "${var.name}"
+}
+resource "aws_cloudwatch_log_group" "ecs_agent" {
+  name              = "${var.name}/ecs-agent"
+  retention_in_days = 14
+}
+resource "aws_autoscaling_group" "main" {
+  availability_zones        = [
+    "${var.AWS_AZ_ALPHA}",
+    "${var.AWS_AZ_CHARLIE}",
+  ]
+  name                      = "${var.name}"
+  max_size                  = 5
+  min_size                  = 2
+  health_check_grace_period = 300
+  health_check_type         = "ELB"
+  # desired_capacity          = 4
+  # force_delete              = true
+  # placement_group           = "${aws_placement_group.test.id}"
+  launch_configuration      = "${aws_launch_configuration.main.name}"
+
+#   initial_lifecycle_hook {
+#     name                 = "foobar"
+#     default_result       = "CONTINUE"
+#     heartbeat_timeout    = 2000
+#     lifecycle_transition = "autoscaling:EC2_INSTANCE_LAUNCHING"
+#
+#     notification_metadata = <<EOF
+# {
+#   "foo": "bar"
+# }
+# EOF
+#
+#     notification_target_arn = "arn:aws:sqs:us-east-1:444455556666:queue1*"
+#     role_arn                = "arn:aws:iam::123456789012:role/S3Access"
+#   }
+
+  tag {
+    key                 = "Name"
+    value               = "${var.name}"
+    propagate_at_launch = true
+  }
+
+  timeouts {
+    delete = "15m"
+  }
+
+  # tag {
+  #   key                 = "lorem"
+  #   value               = "ipsum"
+  #   propagate_at_launch = false
+  # }
+
+  vpc_zone_identifier = [
+    "${aws_subnet.public_a.id}",
+    "${aws_subnet.public_c.id}",
+  ]
+
+  default_cooldown    = 150
+
+  lifecycle {
+    create_before_destroy = true
+    # NOTE: changed automacally by autoscale policy
+    ignore_changes        = ["desired_capacity"]
+  }
+}
+
+resource "aws_launch_configuration" "main" {
+  name_prefix                 = "${aws_ecs_cluster.main.name}-"
+  image_id                    = "ami-72f36a14"
+  instance_type               = "t2.micro"
+
+  security_groups             = [
+    "${aws_default_security_group.default.id}",
+    "${aws_security_group.ecs.id}",
+
+  ]
+  key_name                    = "${aws_key_pair.developer.key_name}"
+  ebs_optimized               = false
+
+  iam_instance_profile        = "${aws_iam_instance_profile.ecs_instance.name}"
+  user_data                   = "${data.template_file.ecs_cluster_user_data.rendered}"
+  associate_public_ip_address = true
+  enable_monitoring           = true
+
+  # NOTE: Currently no-support to customizing block device(s)
+  #       - OS specified image_id is not always using /dev/xvdcz as docker storage
+  #       - As a workaround, creates the ami that it is customizing to the block device mappings
+  #root_block_device {}
+  #ebs_block_device  { device_name = "/dev/xvdcz" }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+data "template_file" "ecs_cluster_user_data" {
+  template = "${file("template/user_data.sh")}"
+
+  vars {
+    cluster_name = "${aws_ecs_cluster.main.name}"
+  }
+}
+
+#--------------------------------------------------------------
+# IAM - ECS
+#--------------------------------------------------------------
+resource "aws_iam_role" "ecs_instance" {
+  name                  = "${aws_ecs_cluster.main.name}-ecs-instance-role"
+  force_detach_policies = true
+
+  assume_role_policy    = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_instance_policy" {
+  # http://docs.aws.amazon.com/AmazonECS/latest/developerguide/instance_IAM_role.html
+  role       = "${aws_iam_role.ecs_instance.name}"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+
+  depends_on = ["aws_iam_role.ecs_instance"]
+}
+
+resource "aws_iam_instance_profile" "ecs_instance" {
+  name       = "${aws_ecs_cluster.main.name}-ecs-instance-profile"
+  role       = "${aws_iam_role.ecs_instance.name}"
+
+  depends_on = ["aws_iam_role.ecs_instance"]
+}
+
+#--------------------------------------------------------------
+# Auto Scaling - Cluster
+#--------------------------------------------------------------
+# resource "aws_autoscaling_notification" "ok" {
+#   group_names   = ["${aws_autoscaling_group.main.name}"]
+#   notifications = [
+#     "autoscaling:EC2_INSTANCE_LAUNCH",
+#     "autoscaling:EC2_INSTANCE_TERMINATE",
+#   ]
+#   topic_arn     = "${var.autoscale_notification_ok_topic_arn}"
+# }
+
+# resource "aws_autoscaling_notification" "ng" {
+#   count         = "${var.autoscale_notification_ng_topic_arn != "" ? 1 : 0}"
+#
+#   group_names   = ["${aws_autoscaling_group.main.name}"]
+#   notifications = [
+#     "autoscaling:EC2_INSTANCE_LAUNCH_ERROR",
+#     "autoscaling:EC2_INSTANCE_TERMINATE_ERROR",
+#   ]
+#   topic_arn     = "${var.autoscale_notification_ng_topic_arn}"
+# }
+
+resource "aws_autoscaling_policy" "scale_out" {
+  name                      = "${aws_ecs_cluster.main.name}-ECSCluster-ScaleOut"
+  autoscaling_group_name    = "${aws_autoscaling_group.main.name}"
+  scaling_adjustment        = 1
+  adjustment_type           = "ChangeInCapacity"
+  cooldown                  = 300
+}
+
+resource "aws_autoscaling_policy" "scale_in" {
+  name                      = "${aws_ecs_cluster.main.name}-ECSCluster-ScaleIn"
+  autoscaling_group_name    = "${aws_autoscaling_group.main.name}"
+  scaling_adjustment        = -1
+  adjustment_type           = "ChangeInCapacity"
+  cooldown                  = 300
+}
+
+resource "aws_cloudwatch_metric_alarm" "cpu_reservation_high" {
+  alarm_name          = "${aws_ecs_cluster.main.name}-ECSCluster-CPUReservation-High"
+  alarm_description   = "${aws_ecs_cluster.main.name} scale-out pushed by cpu-reservation-high"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "CPUReservation"
+  namespace           = "AWS/ECS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 75
+  treat_missing_data  = "notBreaching"
+
+  dimensions {
+    ClusterName = "${aws_ecs_cluster.main.name}"
+  }
+
+  # ok_actions          = ["${compact(var.scale_out_ok_actions)}"]
+  alarm_actions       = [
+    "${aws_autoscaling_policy.scale_out.arn}",
+  ]
+}
+
+resource "aws_cloudwatch_metric_alarm" "cpu_reservation_low" {
+  alarm_name          = "${aws_ecs_cluster.main.name}-ECSCluster-CPUReservation-Low"
+  alarm_description   = "${aws_ecs_cluster.main.name} scale-in pushed by cpu-reservation-low"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "CPUReservation"
+  namespace           = "AWS/ECS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 5
+  treat_missing_data  = "notBreaching"
+
+  dimensions {
+    ClusterName = "${aws_ecs_cluster.main.name}"
+  }
+
+  # ok_actions          = ["${compact(var.scale_in_ok_actions)}"]
+  alarm_actions       = [
+    "${aws_autoscaling_policy.scale_in.arn}",
+  ]
 }
