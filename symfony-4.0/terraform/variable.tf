@@ -19,5 +19,5 @@ variable "CIDR_BLOCKS" {
 # General
 #--------------------------------------------------------------
 variable "name" {
-  default = "symfony-4.0"
+  default = "symfony-40"
 }
