@@ -358,6 +358,58 @@ resource "aws_iam_instance_profile" "ecs_instance" {
 #--------------------------------------------------------------
 # Auto Scaling - Cluster
 #--------------------------------------------------------------
+resource "aws_iam_role" "service_autoscale" {
+  name               = "${var.name}-ecs-service-autoscale"
+  path               = "/"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ecs.application-autoscaling.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy" "service_autoscale" {
+  role   = "${aws_iam_role.service_autoscale.id}"
+  // Same as service-linked role arn:aws:iam::aws:policy/aws-service-role/AWSApplicationAutoscalingECSServicePolicy
+  policy = <<POLICY
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ecs:DescribeServices",
+                "ecs:UpdateService",
+                "cloudwatch:PutMetricAlarm",
+                "cloudwatch:DescribeAlarms",
+                "cloudwatch:DeleteAlarms"
+            ],
+            "Resource": [
+                "*"
+            ]
+        }
+    ]
+}
+POLICY
+}
+resource "aws_appautoscaling_target" "main" {
+  max_capacity       = 4
+  min_capacity       = 2
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.main.name}"
+  role_arn           = "${aws_iam_role.service_autoscale.arn}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
 # resource "aws_autoscaling_notification" "ok" {
 #   group_names   = ["${aws_autoscaling_group.main.name}"]
 #   notifications = [
@@ -537,5 +589,15 @@ EOT
 
 resource "aws_cloudwatch_log_group" "httpd" {
   name              = "symfony-40/container/httpd"
+  retention_in_days = 14
+}
+
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "symfony-40/container/app"
+  retention_in_days = 14
+}
+
+resource "aws_cloudwatch_log_group" "php" {
+  name              = "symfony-40/container/php"
   retention_in_days = 14
 }

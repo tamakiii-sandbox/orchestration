@@ -3,8 +3,18 @@
     "name":      "app",
     "essential": true,
     "image":     "825814182855.dkr.ecr.ap-northeast-1.amazonaws.com/symfony-4.0/app:latest",
-    "memory":    128,
+    "memory":    64,
     "portMappings": [],
+    "environment": [
+      {
+        "name": "tty",
+        "value": "true"
+      }
+    ],
+    "command": [
+      "ping",
+      "docker.com"
+    ],
     "logConfiguration": {
       "logDriver": "awslogs",
       "options": {
@@ -25,10 +35,40 @@
         "containerPort": 80
       }
     ],
+    "links": [
+      "app"
+    ],
+    "volumesFrom": [
+      {
+        "sourceContainer": "php",
+        "readOnly": null
+      }
+    ],
     "logConfiguration": {
       "logDriver": "awslogs",
       "options": {
         "awslogs-group":  "symfony-40/container/httpd",
+        "awslogs-region": "${region}",
+        "awslogs-multiline-pattern": "{datetime_format}"
+      }
+    }
+  },
+  {
+    "name":      "php",
+    "essential": true,
+    "image":     "825814182855.dkr.ecr.ap-northeast-1.amazonaws.com/symfony-4.0/php:latest",
+    "memory":    128,
+    "portMappings": [],
+    "volumesFrom": [
+      {
+        "sourceContainer": "app",
+        "readOnly": null
+      }
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group":  "symfony-40/container/php",
         "awslogs-region": "${region}",
         "awslogs-multiline-pattern": "{datetime_format}"
       }

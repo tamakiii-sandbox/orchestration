@@ -2,7 +2,7 @@ version: '3.4'
 services:
   repository:
     image: symfony-4.0/app
-    build: ./docker/app
+    build: .
     tty: true
     volumes:
       - ./repository:/repository
