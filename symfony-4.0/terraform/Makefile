@@ -18,7 +18,7 @@ apply:
 	$(MAKE) terraform/apply ARGS=terraform.tfplan
 
 destroy:
-	$(MAKE) terraform/destroy
+	$(MAKE) terraform/destroy ARGS="${config_options}"
 
 validate:
 	$(MAKE) terraform/validate
@@ -31,4 +31,3 @@ sh:
 
 terraform/%:
 	docker run -it -v $(CURDIR):/work -w /work -v ~/.aws:/root/.aws ${IMAGE} $(@F) ${ARGS}
-
