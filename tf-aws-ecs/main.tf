@@ -49,7 +49,7 @@ terraform {
 # Provider
 ########################################
 provider "aws" {
-  version = "~> 1.6"
+  version = "~> 1.7"
   profile = "${var.profile}"
   region = "${var.region}"
 }
