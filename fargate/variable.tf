@@ -10,8 +10,20 @@ variable "profile" {
 variable "region" {
   default = "us-east-1"
 }
+variable "aws_id" {
+  default = "825814182855"
+}
 variable "vpc_cidr_block" {
   default = "13.0.0.0/16"
+}
+variable "availability_zones" {
+  type = "map"
+  default = {
+    alpha    = "us-east-1a"
+    beta     = "us-east-1b"
+    charlie  = "us-east-1c"
+    delta    = "us-east-1d"
+  }
 }
 variable "subnet_cidr_blocks" {
   type = "map"
