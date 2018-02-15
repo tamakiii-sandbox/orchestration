@@ -25,7 +25,7 @@ validate:
 import:
 	$(TERRAFORM) import $(NAME) $(VALUE)
 
-sh:
+login:
 	docker run -it --entrypoint sh $(IMAGE)
 
 help:
