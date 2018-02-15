@@ -1,5 +1,5 @@
-IMAGE := hashicorp/terraform:0.11.3
-ARGS  :=
+IMAGE     := hashicorp/terraform:0.11.3
+TERRAFORM := docker run -it -v $(CURDIR):/work -w /work -v ~/.aws:/root/.aws $(IMAGE)
 
 config_files   ?= $(shell find config -name "*.tfvars" -o -name "*.hcl")
 config_options ?= $(foreach f,$(config_files),-var-file="$(f)")
@@ -8,25 +8,28 @@ setup:
 	docker pull $(IMAGE)
 
 init:
-	$(MAKE) terraform/init
+	$(TERRAFORM) init
 
 plan:
-	$(MAKE) terraform/plan ARGS="$(config_options) -out=terraform.tfplan"
+	$(TERRAFORM) plan $(config_options) -out=terraform.tfplan
 
 apply:
-	$(MAKE) terraform/apply ARGS=terraform.tfplan
+	$(TERRAFORM) apply terraform.tfplan
 
 destroy:
-	$(MAKE) terraform/destroy ARGS="$(config_options)"
+	$(TERRAFORM) destroy $(config_options)
 
 validate:
-	$(MAKE) terraform/validate
+	$(TERRAFORM) validate $(NAME) $(VALUE)
 
 import:
-	$(MAKE) terraform/import ARGS="$(NAME) $(VALUE)"
+	$(TERRAFORM) import $(NAME) $(VALUE)
 
 sh:
 	docker run -it --entrypoint sh $(IMAGE)
 
-terraform/%:
-	docker run -it -v $(CURDIR):/work -w /work -v ~/.aws:/root/.aws $(IMAGE) $(@F) $(ARGS)
+help:
+	$(TERRAFORM) --help
+
+help/%:
+	$(TERRAFORM) $(@F) --help
