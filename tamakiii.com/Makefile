@@ -29,6 +29,9 @@ import: require/ADDR require/ID
 refresh:
 	$(TERRAFORM) refresh
 
+show:
+	$(TERRAFORM) show
+
 output:
 	$(TERRAFORM) output $(NAME)
 
