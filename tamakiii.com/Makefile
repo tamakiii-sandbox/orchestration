@@ -29,6 +29,9 @@ import: require/ADDR require/ID
 refresh:
 	$(TERRAFORM) refresh
 
+output:
+	$(TERRAFORM) output $(NAME)
+
 login:
 	docker run -it --entrypoint sh $(IMAGE)
 
