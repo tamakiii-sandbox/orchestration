@@ -32,6 +32,9 @@ refresh:
 output:
 	$(TERRAFORM) output $(NAME)
 
+state-rm: require/ADDRESS
+	$(TERRAFORM) state rm $(ADDRESS)
+
 login:
 	docker run -it --entrypoint sh $(IMAGE)
 
