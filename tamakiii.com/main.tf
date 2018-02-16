@@ -29,16 +29,35 @@ resource "aws_acm_certificate" "tamakiiicom" {
 }
 
 resource "aws_route53_record" "tamakiiicom_cert_validation" {
+  # count   = "${length(aws_acm_certificate.tamakiiicom.domain_validation_options)}"
   zone_id = "${data.aws_route53_zone.tamakiiicom.id}"
+
+  # "${element(var.developer, count.index)}"
+
+  # name    = "${lookup(element(aws_acm_certificate.tamakiiicom.domain_validation_options, count.index), "resource_record_name")}"
+  # type    = "${lookup(element(aws_acm_certificate.tamakiiicom.domain_validation_options, count.index), "resource_record_type")}"
+  # records = ["${lookup(element(aws_acm_certificate.tamakiiicom.domain_validation_options, count.index), "resource_record_value")}"]
   name    = "${aws_acm_certificate.tamakiiicom.domain_validation_options.0.resource_record_name}"
   type    = "${aws_acm_certificate.tamakiiicom.domain_validation_options.0.resource_record_type}"
   records = ["${aws_acm_certificate.tamakiiicom.domain_validation_options.0.resource_record_value}"]
   ttl     = 60
 }
 
+resource "aws_route53_record" "tamakiiicom_aws_cert_validation" {
+  zone_id = "${data.aws_route53_zone.tamakiiicom.id}"
+
+  name    = "${aws_acm_certificate.tamakiiicom.domain_validation_options.1.resource_record_name}"
+  type    = "${aws_acm_certificate.tamakiiicom.domain_validation_options.1.resource_record_type}"
+  records = ["${aws_acm_certificate.tamakiiicom.domain_validation_options.1.resource_record_value}"]
+  ttl     = 60
+}
+
 resource "aws_acm_certificate_validation" "tamakiiicom" {
   certificate_arn = "${aws_acm_certificate.tamakiiicom.arn}"
-  validation_record_fqdns = ["${aws_route53_record.tamakiiicom_cert_validation.fqdn}"]
+  validation_record_fqdns = [
+    "${aws_route53_record.tamakiiicom_cert_validation.fqdn}",
+    "${aws_route53_record.tamakiiicom_aws_cert_validation.fqdn}"
+  ]
 }
 
 resource "aws_alb_listener" "tamakiiicom_https" {
