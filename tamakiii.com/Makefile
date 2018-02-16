@@ -1,5 +1,5 @@
 IMAGE     := hashicorp/terraform:0.11.3
-TERRAFORM := docker run -it -v $(CURDIR):/work -w /work -v ~/.aws:/root/.aws $(IMAGE)
+TERRAFORM := docker run -it -v $(CURDIR):/work -w /work -v ~/.aws:/root/.aws -v ~/.ssh:/root/.ssh $(IMAGE)
 OUT_FILE  := terraform.tfplan
 
 config_files   ?= $(shell find config -name "*.tfvars" -o -name "*.hcl")
