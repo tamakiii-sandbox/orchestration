@@ -26,6 +26,9 @@ validate:
 import: require/ADDR require/ID
 	$(TERRAFORM) import $(ADDR) $(ID)
 
+refresh:
+	$(TERRAFORM) refresh
+
 login:
 	docker run -it --entrypoint sh $(IMAGE)
 
