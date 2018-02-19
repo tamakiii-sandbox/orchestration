@@ -1,0 +1,9 @@
+version: '3.3'
+services:
+  terraform:
+    image: hashicorp/terraform:0.11.3
+    working_dir: /work
+    volumes:
+      - .:/work
+      - ~/.aws:/root/.aws
+      - ~/.ssh:/root/.ssh

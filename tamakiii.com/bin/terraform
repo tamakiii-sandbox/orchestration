@@ -1,0 +1,6 @@
+#!/bin/sh -e
+
+base="$(basename "$0")"
+root=$(realpath $(cd $(dirname $0)/.. && pwd))
+
+docker-compose --project-directory $root run $base $@
