@@ -1,33 +1,51 @@
-IMAGE := hashicorp/terraform:0.11.2
-ARGS  :=
-MAKE := $(shell which make)
+IMAGE     := hashicorp/terraform:0.11.3
+TERRAFORM := docker run -it -v $(CURDIR):/work -w /work -v ~/.aws:/root/.aws -v ~/.ssh:/root/.ssh $(IMAGE)
+OUT_FILE  := terraform.tfplan
 
 config_files   ?= $(shell find config -name "*.tfvars" -o -name "*.hcl")
-config_options ?= $(foreach f,${config_files},-var-file="${f}")
+config_options ?= $(foreach f,$(config_files),-var-file="$(f)")
 
 setup:
-	docker pull ${IMAGE}
+	docker pull $(IMAGE)
 
 init:
-	$(MAKE) terraform/init
+	$(TERRAFORM) init
+
+get:
+	$(TERRAFORM) get
 
 plan:
-	$(MAKE) terraform/plan ARGS="${config_options} -out=terraform.tfplan"
+	$(TERRAFORM) plan $(config_options) -out=$(OUT_FILE)
 
 apply:
-	$(MAKE) terraform/apply ARGS=terraform.tfplan
+	$(TERRAFORM) apply $(OUT_FILE)
 
 destroy:
-	$(MAKE) terraform/destroy ARGS="${config_options}"
+	$(TERRAFORM) destroy $(config_options)
 
 validate:
-	$(MAKE) terraform/validate
+	$(TERRAFORM) validate
 
-import:
-	$(MAKE) terraform/import ARGS="${NAME} ${VALUE}"
+import: require/ADDR require/ID
+	$(TERRAFORM) import $(ADDR) $(ID)
 
-sh:
-	docker run -it --entrypoint sh ${IMAGE}
+refresh:
+	$(TERRAFORM) refresh
 
-terraform/%:
-	docker run -it -v $(CURDIR):/work -w /work -v ~/.aws:/root/.aws ${IMAGE} $(@F) ${ARGS}
+output:
+	$(TERRAFORM) output $(NAME)
+
+state-rm: require/ADDRESS
+	$(TERRAFORM) state rm $(ADDRESS)
+
+login:
+	docker run -it --entrypoint sh $(IMAGE)
+
+help:
+	$(TERRAFORM) --help
+
+help/%:
+	$(TERRAFORM) $(@F) --help
+
+require/%:
+	@if [ -z "$($(@F))" ]; then echo "$(@F) is required. $($(@F))" && exit 1; fi

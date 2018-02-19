@@ -40,6 +40,7 @@ variable "key_pair" { type = "map" }
 terraform {
   backend "s3" {
     region = "ap-northeast-1"
+    profile = "tamakiii"
     bucket = "terraform.tamakiii.com"
     key = "orchestration/tf-aws-ecs/terraform.tfstate"
   }
