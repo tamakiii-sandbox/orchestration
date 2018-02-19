@@ -1,6 +1,12 @@
 #!/bin/sh -e
 
-base="$(basename "$0")"
+image=hashicorp/terraform:0.11.3
+base=$(basename "$0")
 root=$(realpath $(cd $(dirname $0)/.. && pwd))
 
-docker-compose --project-directory $root run $base $@
+docker run -it \
+	-v $root:/work \
+	-v ~/.ssh:/root/.ssh \
+	-v ~/.aws:/root/.aws \
+	-w /work \
+	$image $@
