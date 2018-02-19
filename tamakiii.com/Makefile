@@ -1,7 +1,7 @@
 TERRAFORM := bin/terraform
 OUT_FILE  := terraform.tfplan
 
-config_files   ?= $(shell find config -name "*.tfvars" -o -name "*.hcl")
+config_files   ?= $(shell find config -name "*.tfvars" -o -name "*.hcl" 2> /dev/null)
 config_options ?= $(foreach f,$(config_files),-var-file="$(f)")
 
 plan:
