@@ -6,8 +6,8 @@ cwd        := $(subst $(root_dir)/,,$(target_dir))
 out_file   := $(cwd)/terraform.tfplan
 terraform  := $(root_dir)/bin/terraform
 
-config_files   ?= $(shell find config -name "*.tfvars" -o -name "*.hcl" 2> /dev/null)
-config_options ?= $(foreach f,$(config_files),-var-file="$(f)")
+config_files   ?= terraform/config/config.hcl
+config_options ?= $(foreach f,$(config_files),-var-file=$(f))
 
 init:
 	$(terraform) init $(config_options) $(cwd)
@@ -20,4 +20,3 @@ apply:
 
 destroy:
 	$(terraform) destroy $(config_options) $(cwd)
-
