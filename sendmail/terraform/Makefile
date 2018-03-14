@@ -16,7 +16,7 @@ plan:
 	$(terraform) plan $(config_options) -out=$(out_file) $(cwd)
 
 apply:
-	$(terraform) apply $(out_file) $(cwd)
+	$(terraform) apply $(out_file)
 
 destroy:
 	$(terraform) destroy $(config_options) $(cwd)
