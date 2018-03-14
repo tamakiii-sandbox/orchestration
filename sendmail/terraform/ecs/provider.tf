@@ -3,7 +3,7 @@ terraform {
     region = "ap-northeast-1"
     profile = "tamakiii"
     bucket = "terraform.tamakiii.com"
-    key = "orchestration/sendmail/terraform.tfstate"
+    key = "orchestration/sendmail/ecs/terraform.tfstate"
   }
 }
 
@@ -12,4 +12,3 @@ provider "aws" {
   region = "${var.region}"
   profile = "${var.profile}"
 }
-
