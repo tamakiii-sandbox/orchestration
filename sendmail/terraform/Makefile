@@ -5,11 +5,12 @@ cwd        := $(subst $(root_dir)/,,$(abspath .))
 out_file   := $(cwd)/terraform.tfplan
 terraform  := $(root_dir)/bin/terraform
 
+reconfigure    := -reconfigure
 config_files   ?= $(shell cd $(root_dir) && find terraform/config -type f -name '*.hcl')
 config_options ?= $(foreach f,$(config_files),-var-file=$(f))
 
 init:
-	$(terraform) init $(config_options) $(cwd)
+	$(terraform) init $(config_options) $(reconfigure) $(cwd)
 
 plan:
 	$(terraform) plan $(config_options) -out=$(out_file) $(cwd)
