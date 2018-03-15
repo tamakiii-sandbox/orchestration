@@ -5,7 +5,6 @@ services:
     build:
       context: .
       dockerfile: docker/php/Dockerfile
-    working_dir: /work
     volumes:
       - .:/work
     ports:
