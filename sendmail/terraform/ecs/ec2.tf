@@ -2,7 +2,7 @@ resource "aws_instance" "ecs" {
   ami                  = "ami-bb5f13dd"
   instance_type        = "t2.micro"
   availability_zone    = "${var.availability_zones["alpha"]}"
-  security_groups      = [
+  vpc_security_group_ids = [
     "${data.aws_security_group.default.id}",
     "${data.aws_security_group.ecs.id}"
   ]
