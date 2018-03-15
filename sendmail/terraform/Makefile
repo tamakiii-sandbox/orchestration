@@ -1,12 +1,11 @@
 mkfile_dir := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 root_dir   := $(abspath $(mkfile_dir)/..)
-target_dir := $(abspath .)
-cwd        := $(subst $(root_dir)/,,$(target_dir))
+cwd        := $(subst $(root_dir)/,,$(abspath .))
 
 out_file   := $(cwd)/terraform.tfplan
 terraform  := $(root_dir)/bin/terraform
 
-config_files   ?= terraform/config/config.hcl
+config_files   ?= $(shell cd $(root_dir) && find terraform/config -type f -name '*.hcl')
 config_options ?= $(foreach f,$(config_files),-var-file=$(f))
 
 init:
@@ -20,3 +19,6 @@ apply:
 
 destroy:
 	$(terraform) destroy $(config_options) $(cwd)
+
+refresh:
+	$(terraform) refresh
