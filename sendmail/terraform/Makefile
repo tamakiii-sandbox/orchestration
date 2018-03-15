@@ -23,3 +23,6 @@ destroy:
 
 refresh:
 	$(terraform) refresh
+
+clean:
+	cd $(root_dir) && find . -name terraform.tfplan | xargs rm
