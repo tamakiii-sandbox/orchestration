@@ -1,0 +1,11 @@
+version: '3.5'
+services:
+  php:
+    image: tamakiii/orchestration/sendmail/php
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    volumes:
+      - .:/work
+    ports:
+      - 8080:80
