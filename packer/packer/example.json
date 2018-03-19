@@ -20,10 +20,22 @@
   ],
   "provisioners": [
     {
+      "type": "file",
+      "source": "packer",
+      "destination": "/tmp/packer"
+    },
+    {
+      "type": "shell",
+      "inline": ["sudo yum -y update"]
+    },
+    {
+      "type": "shell",
+      "inline": ["sudo yum -y install postfix"]
+    },
+    {
       "type": "shell",
       "inline": [
-        "sudo yum -y update",
-        "sudo yum -y install postfix"
+        "history -c"
       ]
     }
   ]

@@ -12,5 +12,11 @@ build:
 validate:
 	$(packer) validate packer/example.json
 
+inspect:
+	$(packer) inspect packer/example.json
+
 help:
 	$(packer) --help
+
+%/help:
+	$(packer) $(@D) --help
