@@ -1,5 +1,5 @@
 resource "aws_instance" "controller" {
-  ami                  = "ami-071d9a15d881e05b1"
+  ami                  = "ami-083495c25079d8368"
   instance_type        = "t2.micro"
   availability_zone    = "${var.availability_zones["charlie"]}"
   vpc_security_group_ids = [
