@@ -1,0 +1,30 @@
+{
+  "description": "AmazonLinux controller test image",
+  "variables": {
+    "vpc": "vpc-020524747e1a05317",
+    "subnet": "subnet-0d42b2fc31c5635a5"
+  },
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "region": "ap-northeast-1",
+      "vpc_id": "{{user `vpc`}}",
+      "subnet_id": "{{user `subnet`}}",
+      "associate_public_ip_address": true,
+      "ssh_username": "ec2-user",
+      "ssh_pty": true,
+      "source_ami": "ami-a77c30c1",
+      "instance_type": "t2.micro",
+      "ami_name": "packer-example {{timestamp}}"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "sudo yum -y update",
+        "sudo yum -y install postfix"
+      ]
+    }
+  ]
+}
