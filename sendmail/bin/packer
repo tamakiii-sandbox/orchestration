@@ -9,5 +9,6 @@ docker run -it \
   -v ~/.ssh:/root/.ssh \
   -v ~/.aws:/root/.aws \
   -e AWS_PROFILE=$AWS_PROFILE \
+  -e PACKER_LOG=$PACKER_LOG \
   -w /work \
   $image $@

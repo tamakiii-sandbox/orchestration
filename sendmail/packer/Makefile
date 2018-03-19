@@ -2,7 +2,9 @@ mkfile_dir := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 root_dir   := $(abspath $(mkfile_dir)/..)
 
 profile := tamakiii
-packer  := export AWS_PROFILE=$(profile) && $(root_dir)/bin/packer
+debug   :=
+environments := export AWS_PROFILE=$(profile) && export PACKER_LOG=$(debug)
+packer  := $(environments) && $(root_dir)/bin/packer
 
 build:
 	$(packer) build packer/example.json
