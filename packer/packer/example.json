@@ -30,7 +30,7 @@
     },
     {
       "type": "shell",
-      "inline": ["sudo yum -y install postfix"]
+      "inline": ["sudo /tmp/packer/provisioning.sh"]
     },
     {
       "type": "shell",
