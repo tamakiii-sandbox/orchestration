@@ -1,5 +1,5 @@
 resource "aws_instance" "controller" {
-  ami                  = "ami-a77c30c1"
+  ami                  = "ami-0b47439f11a62be08"
   instance_type        = "t2.micro"
   availability_zone    = "${var.availability_zones["charlie"]}"
   vpc_security_group_ids = [
@@ -11,7 +11,7 @@ resource "aws_instance" "controller" {
   # user_data            = "${data.template_file.ecs_instance_user_data.rendered}"
   # iam_instance_profile = "${aws_iam_instance_profile.ecs_instance.name}"
 
-  associate_public_ip_address          = false
+  associate_public_ip_address          = true
   instance_initiated_shutdown_behavior = "terminate"
 
   tags {
