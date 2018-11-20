@@ -1,0 +1,42 @@
+{
+  "description": "AmazonLinux controller test image",
+  "variables": {
+    "vpc": "vpc-0820a3798f1289912",
+    "subnet": "subnet-034dda044dc419ffd"
+  },
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "region": "ap-northeast-1",
+      "source_ami": "ami-a77c30c1",
+      "ami_name": "packer-example {{timestamp}}",
+      "instance_type": "t2.micro",
+      "vpc_id": "{{user `vpc`}}",
+      "subnet_id": "{{user `subnet`}}",
+      "associate_public_ip_address": true,
+      "ssh_username": "ec2-user",
+      "ssh_pty": true
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "file",
+      "source": "packer",
+      "destination": "/tmp/packer"
+    },
+    {
+      "type": "shell",
+      "inline": ["sudo yum -y update"]
+    },
+    {
+      "type": "shell",
+      "inline": ["sudo /tmp/packer/provisioning.sh"]
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "history -c"
+      ]
+    }
+  ]
+}
